@@ -7,7 +7,7 @@ local LogService = game:GetService("LogService")
 local ACTester = {
     TESTER_NAME = "Anti-Cheat Tester",
     VERSION = "1.4.0",
-    AUTHORIZED_USER = {8550010629}, -- REPLACE WITH YOUR USER ID
+    AUTHORIZED_USER = {8550010629},
     IS_ACTIVE = false,
 
     TEST_CASES = {
@@ -69,7 +69,7 @@ function ACTester:BuildUI()
 
     local rowIndex = 0
     for testName, testData in pairs(self.TEST_CASES) do
-        rowIndex += 1
+        rowIndex = rowIndex + 1
         local Button = Instance.new("TextButton")
         Button.Size = UDim2.new(0.9, 0, 0.15, 0)
         Button.Position = UDim2.new(0.05, 0, (rowIndex - 1) * 0.17, 0)
@@ -126,7 +126,7 @@ function ACTester:RunTestCase(testName)
             if leaderstats then
                 local Score = leaderstats:FindFirstChild("Score")
                 if Score then
-                    Score.Value += 100
+                    Score.Value = Score.Value + 100
                     return "Score updated to " .. Score.Value
                 end
                 return "Score not found"
@@ -202,7 +202,9 @@ function ACTester:RunTestCase(testName)
 end
 
 function ACTester:Initialize()
-    repeat wait() until Players.LocalPlayer
+    wait(1)
+    local LocalPlayer = Players.LocalPlayer
+    if not LocalPlayer then return end
     if not self:IsAuthorized() then
         warn("[ACTester] UNAUTHORIZED - Invalid User ID!")
         return
@@ -222,3 +224,4 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 ACTester:Initialize()
+    
