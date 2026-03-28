@@ -5,9 +5,9 @@ local UserInputService = game:GetService("UserInputService")
 local LogService = game:GetService("LogService")
 
 local ACTester = {
-    TESTER_NAME = "Xephyf 1.4.1 Anti-Rules",
-    VERSION = "1.4.1",
-    AUTHORIZED_USER = {8550010629},
+    TESTER_NAME = "Anti-Cheat Tester",
+    VERSION = "1.4.0",
+    AUTHORIZED_USER = {8550010629}, -- REPLACE WITH YOUR USER ID
     IS_ACTIVE = false,
 
     TEST_CASES = {
@@ -50,6 +50,7 @@ function ACTester:BuildUI()
     TestGui.Parent = PlayerGui
 
     local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0.5, 0, 0.7, 0)
     MainFrame.Position = UDim2.new(0.25, 0, 0.15, 0)
     MainFrame.BackgroundColor3 = self.UI_STYLE.MainFrame
@@ -99,7 +100,11 @@ function ACTester:AddLog(message, isSuccess)
     if not self.LogLabel then return end
     local logText = os.date("[%H:%M:%S] ") .. (isSuccess and "[SUCCESS]" or "[DETECTED]") .. " " .. message
     self.LogLabel.Text = self.LogLabel.Text .. "\n" .. logText
-    if isSuccess then print(logText) else warn(logText) end
+    if isSuccess then
+        print(logText)
+    else
+        warn(logText)
+    end
 end
 
 function ACTester:RunTestCase(testName)
@@ -151,7 +156,7 @@ function ACTester:RunTestCase(testName)
                 LogText.Position = UDim2.new(0.1, 0, 0.2, 0)
                 LogText.BackgroundColor3 = Color3.new(0, 0, 0)
                 LogText.TextColor3 = Color3.new(1, 1, 1)
-                LogText.Text = "LOGS:\n" .. LogService:GetLogHistory()
+                LogText.Text = "LOGS:\n" .. tostring(LogService:GetLogHistory())
                 LogText.TextWrapped = true
                 LogText.Parent = LogViewer
                 return "Custom log viewer created"
@@ -209,8 +214,10 @@ end
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == Enum.KeyCode.F8 then
         ACTester.IS_ACTIVE = not ACTester.IS_ACTIVE
-        local MainFrame = Players.LocalPlayer.PlayerGui.ACTesterGui.MainFrame
-        if MainFrame then MainFrame.Visible = ACTester.IS_ACTIVE end
+        local MainFrame = Players.LocalPlayer.PlayerGui:FindFirstChild("ACTesterGui"):FindFirstChild("MainFrame")
+        if MainFrame then
+            MainFrame.Visible = ACTester.IS_ACTIVE
+        end
     end
 end)
 
