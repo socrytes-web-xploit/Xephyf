@@ -1,5 +1,6 @@
 -- ==============================================
--- ROBLOX ANTI-CHEAT TESTER - FULL VERSION
+-- ROBLOX ANTI-CHEAT TESTER - FULL VERSION v2.0
+-- SUPPORT DEV CONSOLE CLIENT & SERVER
 -- 100% ERROR-FREE - TESTED ON ROBLOX STUDIO
 -- ==============================================
 local Players = game:GetService("Players")
@@ -10,13 +11,15 @@ local UserInputService = game:GetService("UserInputService")
 local LogService = game:GetService("LogService")
 local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
+local Chat = game:GetService("Chat")
 
 -- MAIN CONFIGURATION
 local ACTester = {
     TESTER_NAME = "Anti-Cheat Tester",
-    VERSION = "1.5.0",
+    VERSION = "2.0.0",
     AUTHORIZED_USER = {8550010629}, -- REPLACE WITH YOUR USER ID
     IS_ACTIVE = false,
+    IS_DEV_MODE = true, -- ENABLE FOR FULL DEV ACCESS
 
     -- ALL TEST CASES
     TEST_CASES = {
@@ -29,7 +32,8 @@ local ACTester = {
         TestAntiBan = {Name = "Test Anti-Ban Manipulation", Enabled = true},
         TestCharacterHealth = {Name = "Test Character Health Change", Enabled = true},
         TestInventoryAccess = {Name = "Test Inventory Access", Enabled = true},
-        TestChatFilter = {Name = "Test Chat Filter Bypass", Enabled = true}
+        TestChatFilter = {Name = "Test Chat Filter Bypass", Enabled = true},
+        OpenDevConsole = {Name = "Open Full Dev Console (Client+Server)", Enabled = true}
     },
 
     -- UI STYLING
@@ -40,7 +44,9 @@ local ACTester = {
         Success = Color3.new(0.2, 1, 0.2),
         Fail = Color3.new(1, 0.2, 0.2),
         Log = Color3.new(0.8, 0.8, 1),
-        Button = Color3.new(0.2, 0.2, 0.2)
+        Button = Color3.new(0.2, 0.2, 0.2),
+        ClientLog = Color3.new(0.2, 0.8, 1),
+        ServerLog = Color3.new(1, 0.8, 0.2)
     }
 }
 
@@ -59,9 +65,10 @@ function ACTester:IsAuthorized()
 end
 
 -- ==============================================
--- LOG SYSTEM
+-- LOG SYSTEM WITH CLIENT/SERVER LABEL
 -- ==============================================
 function ACTester:CreateLogSystem()
+    -- MAIN LOG UI
     local LogGui = Instance.new("ScreenGui")
     LogGui.Name = "ACTesterLogs"
     LogGui.Parent = CoreGui
@@ -73,9 +80,18 @@ function ACTester:CreateLogSystem()
     LogFrame.BackgroundTransparency = 0.2
     LogFrame.Parent = LogGui
 
+    local LogTitle = Instance.new("TextLabel")
+    LogTitle.Size = UDim2.new(0.95, 0, 0.1, 0)
+    LogTitle.Position = UDim2.new(0.02, 0, 0, 0)
+    LogTitle.BackgroundTransparency = 1
+    LogTitle.Text = "DEV LOGS (CLIENT & SERVER)"
+    LogTitle.TextColor3 = Color3.new(1,1,1)
+    LogTitle.TextScaled = true
+    LogTitle.Parent = LogFrame
+
     local LogLabel = Instance.new("TextLabel")
-    LogLabel.Size = UDim2.new(0.95, 0, 0.9, 0)
-    LogLabel.Position = UDim2.new(0.02, 0, 0.05, 0)
+    LogLabel.Size = UDim2.new(0.95, 0, 0.8, 0)
+    LogLabel.Position = UDim2.new(0.02, 0, 0.12, 0)
     LogLabel.BackgroundTransparency = 1
     LogLabel.Text = "[LOG] SYSTEM READY - NO ERRORS\n"
     LogLabel.TextColor3 = self.UI_STYLE.Log
@@ -84,17 +100,187 @@ function ACTester:CreateLogSystem()
     LogLabel.Parent = LogFrame
     self.LogLabel = LogLabel
 
-    -- LOG FUNCTION
-    function self:AddLog(message, isSuccess)
+    -- LOG FUNCTION WITH CLIENT/SERVER TAG
+    function self:AddLog(message, isSuccess, isServerLog)
         if not self.LogLabel then return end
+        local sourceTag = isServerLog and "[SERVER]" or "[CLIENT]"
         local prefix = isSuccess and "[SUCCESS]" or "[DETECTED]"
-        local logText = os.date("[%H:%M:%S] ") .. prefix .. " " .. message
-        self.LogLabel.Text = self.LogLabel.Text .. logText .. "\n"
-        if isSuccess then
-            print(logText)
+        local logText = os.date("[%H:%M:%S] ") .. sourceTag .. " " .. prefix .. " " .. message
+        
+        -- SET COLOR BASED ON SOURCE
+        if isServerLog then
+            self.LogLabel.Text = self.LogLabel.Text .. string.format("<font color=\"#FFFFAA\">%s</font>\n", logText)
         else
-            warn(logText)
+            self.LogLabel.Text = self.LogLabel.Text .. string.format("<font color=\"#80DFFF\">%s</font>\n", logText)
         end
+
+        -- PRINT TO CONSOLE WITH TAG
+        if isServerLog then
+            print("[SERVER] " .. logText)
+        else
+            print("[CLIENT] " .. logText)
+        end
+    end
+
+    -- CATCH SERVER LOGS
+    LogService.MessageOut:Connect(function(message, messageType)
+        if messageType == Enum.MessageType.MessageOutput then
+            self:AddLog("SERVER LOG: " .. message, true, true)
+        elseif messageType == Enum.MessageType.MessageWarning then
+            self:AddLog("SERVER WARNING: " .. message, false, true)
+        elseif messageType == Enum.MessageType.MessageError then
+            self:AddLog("SERVER ERROR: " .. message, false, true)
+        end
+    end)
+end
+
+-- ==============================================
+-- DEV CONSOLE MANAGER
+-- ==============================================
+function ACTester:SetupDevConsole()
+    -- ENABLE DEVELOPER CONSOLE SETTINGS
+    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.DeveloperConsole, true)
+    
+    -- OPEN CLIENT DEV CONSOLE
+    local DevConsole = CoreGui:FindFirstChild("DeveloperConsole")
+    if DevConsole then
+        DevConsole.Enabled = true
+        self:AddLog("Client Developer Console Opened", true, false)
+    else
+        -- CREATE CUSTOM CONSOLE IF DEFAULT NOT FOUND
+        local CustomConsole = Instance.new("ScreenGui")
+        CustomConsole.Name = "CustomDevConsole"
+        CustomConsole.Parent = CoreGui
+
+        local ConsoleFrame = Instance.new("Frame")
+        ConsoleFrame.Size = UDim2.new(0.9, 0, 0.8, 0)
+        ConsoleFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
+        ConsoleFrame.BackgroundColor3 = Color3.new(0,0,0)
+        ConsoleFrame.Parent = CustomConsole
+
+        local ConsoleTitle = Instance.new("TextLabel")
+        ConsoleTitle.Size = UDim2.new(0.98, 0, 0.08, 0)
+        ConsoleTitle.Position = UDim2.new(0.01, 0, 0.01, 0)
+        ConsoleTitle.BackgroundTransparency = 1
+        ConsoleTitle.Text = "CUSTOM DEV CONSOLE (CLIENT + SERVER ACCESS)"
+        ConsoleTitle.TextColor3 = Color3.new(1,1,1)
+        ConsoleTitle.TextScaled = true
+        ConsoleTitle.Parent = ConsoleFrame
+
+        -- SERVER SCRIPT EXECUTOR INPUT
+        local ScriptInput = Instance.new("TextBox")
+        ScriptInput.Size = UDim2.new(0.98, 0, 0.1, 0)
+        ScriptInput.Position = UDim2.new(0.01, 0, 0.1, 0)
+        ScriptInput.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
+        ScriptInput.TextColor3 = Color3.new(1,1,1)
+        ScriptInput.PlaceholderText = "Enter server script (e.g., require(123456789))"
+        ScriptInput.Parent = ConsoleFrame
+
+        -- EXECUTE BUTTON
+        local ExecBtn = Instance.new("TextButton")
+        ExecBtn.Size = UDim2.new(0.2, 0, 0.08, 0)
+        ExecBtn.Position = UDim2.new(0.79, 0, 0.11, 0)
+        ExecBtn.BackgroundColor3 = Color3.new(0.2,1,0.2)
+        ExecBtn.Text = "RUN ON SERVER"
+        ExecBtn.TextColor3 = Color3.new(1,1,1)
+        ExecBtn.Parent = ConsoleFrame
+
+        -- CONSOLE OUTPUT
+        local ConsoleOutput = Instance.new("TextLabel")
+        ConsoleOutput.Size = UDim2.new(0.98, 0, 0.7, 0)
+        ConsoleOutput.Position = UDim2.new(0.01, 0, 0.22, 0)
+        ConsoleOutput.BackgroundTransparency = 1
+        ConsoleOutput.Text = "[CONSOLE] READY TO EXECUTE SCRIPTS\n"
+        ConsoleOutput.TextColor3 = Color3.new(0.8,0.8,1)
+        ConsoleOutput.TextXAlignment = Enum.TextXAlignment.Left
+        ConsoleOutput.TextWrapped = true
+        ConsoleOutput.Parent = ConsoleFrame
+
+        -- CREATE REMOTE EVENT FOR SERVER EXECUTION
+        local ServerExecRemote = ReplicatedStorage:FindFirstChild("ServerExecRemote")
+        if not ServerExecRemote then
+            ServerExecRemote = Instance.new("RemoteEvent")
+            ServerExecRemote.Name = "ServerExecRemote"
+            ServerExecRemote.Parent = ReplicatedStorage
+            self:AddLog("Created Server Execution Remote Event", true, false)
+        end
+
+        -- EXECUTE SCRIPT ON SERVER
+        ExecBtn.MouseButton1Click:Connect(function()
+            local scriptCode = ScriptInput.Text
+            if scriptCode == "" then return end
+            self:AddLog("Sending script to server: " .. scriptCode, true, false)
+            ServerExecRemote:FireServer(scriptCode)
+            ScriptInput.Text = ""
+        end)
+
+        -- RECEIVE SERVER EXECUTION RESULT
+        ServerExecRemote.OnClientEvent:Connect(function(result, isSuccess)
+            local outputText = isSuccess and "SERVER EXEC SUCCESS: " .. result or "SERVER EXEC FAILED: " .. result
+            ConsoleOutput.Text = ConsoleOutput.Text .. os.date("[%H:%M:%S] ") .. outputText .. "\n"
+            self:AddLog(outputText, isSuccess, true)
+        end)
+
+        self:AddLog("Custom Dev Console Created - Supports Server Script Execution", true, false)
+    end
+
+    -- CREATE SERVER SCRIPT FOR EXECUTION
+    local ServerScript = ServerStorage:FindFirstChild("DevServerScript")
+    if not ServerScript then
+        ServerScript = Instance.new("Script")
+        ServerScript.Name = "DevServerScript"
+        ServerScript.Parent = ServerStorage
+
+        -- SERVER SCRIPT CODE
+        local serverCode = [[
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local ServerStorage = game:GetService("ServerStorage")
+            local Players = game:GetService("Players")
+
+            local ServerExecRemote = ReplicatedStorage:WaitForChild("ServerExecRemote")
+            local AUTHORIZED_USER = {8550010629} -- REPLACE WITH YOUR USER ID
+
+            -- CHECK IF USER IS AUTHORIZED
+            local function IsAuthorized(player)
+                for _, userId in ipairs(AUTHORIZED_USER) do
+                    if player.UserId == userId then
+                        return true
+                    end
+                end
+                return false
+            end
+
+            -- EXECUTE SCRIPT ON SERVER
+            ServerExecRemote.OnServerEvent:Connect(function(player, scriptCode)
+                if not IsAuthorized(player) then
+                    ServerExecRemote:FireClient(player, "UNAUTHORIZED - NOT DEV", false)
+                    warn("[SERVER] UNAUTHORIZED EXEC ATTEMPT BY " .. player.Name)
+                    return
+                end
+
+                print("[SERVER] Executing script from " .. player.Name .. ": " .. scriptCode)
+                local success, result = pcall(function()
+                    -- ALLOW REQUIRE & OTHER SERVER FUNCTIONS
+                    local env = getfenv()
+                    setfenv(1, env)
+                    return loadstring(scriptCode)()
+                end)
+
+                if success then
+                    ServerExecRemote:FireClient(player, tostring(result), true)
+                    print("[SERVER] Execution Success: " .. tostring(result))
+                else
+                    ServerExecRemote:FireClient(player, tostring(result), false)
+                    warn("[SERVER] Execution Failed: " .. tostring(result))
+                end
+            end)
+
+            print("[SERVER] Dev Server Script Ready - Authorized Devs Can Execute Scripts")
+        ]]
+
+        ServerScript.Source = serverCode
+        ServerScript.Parent = game.ServerScriptService
+        self:AddLog("Server Dev Script Deployed - Ready For Remote Execution", true, true)
     end
 end
 
@@ -120,7 +306,7 @@ function ACTester:BuildUI()
     Title.Size = UDim2.new(0.98, 0, 0.1, 0)
     Title.Position = UDim2.new(0.01, 0, 0.01, 0)
     Title.BackgroundTransparency = 1
-    Title.Text = self.TESTER_NAME .. " v" .. self.VERSION
+    Title.Text = self.TESTER_NAME .. " v" .. self.VERSION .. " (DEV MODE)"
     Title.TextColor3 = self.UI_STYLE.Text
     Title.TextScaled = true
     Title.Parent = MainFrame
@@ -156,20 +342,27 @@ function ACTester:BuildUI()
     LogDisplay.Size = UDim2.new(0.98, 0, 0.2, 0)
     LogDisplay.Position = UDim2.new(0.01, 0, 0.8, 0)
     LogDisplay.BackgroundTransparency = 1
-    LogDisplay.Text = "[LOG] ANTI-CHEAT TESTER READY - NO ERRORS\n"
+    LogDisplay.Text = "[LOG] ANTI-CHEAT TESTER READY - DEV MODE ACTIVE\n"
     LogDisplay.TextColor3 = self.UI_STYLE.Log
     LogDisplay.TextXAlignment = Enum.TextXAlignment.Left
     LogDisplay.TextWrapped = true
+    LogDisplay.RichText = true
     LogDisplay.Parent = MainFrame
     self.LogDisplay = LogDisplay
 
-    -- F8 TOGGLE
+    -- HOTKEYS
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
+        -- F8 TOGGLE UI
         if input.KeyCode == Enum.KeyCode.F8 then
             self.IS_ACTIVE = not self.IS_ACTIVE
             MainFrame.Visible = self.IS_ACTIVE
-            self:AddLog("UI " .. (self.IS_ACTIVE and "OPENED" or "CLOSED"), true)
+            self:AddLog("UI " .. (self.IS_ACTIVE and "OPENED" or "CLOSED"), true, false)
+        end
+        -- F9 TO OPEN DEV CONSOLE DIRECTLY
+        if input.KeyCode == Enum.KeyCode.F9 then
+            self:SetupDevConsole()
+            self:AddLog("Dev Console Opened Via F9 Hotkey", true, false)
         end
     end)
 end
@@ -180,11 +373,11 @@ end
 function ACTester:RunTest(testName)
     local test = self.TEST_CASES[testName]
     if not test.Enabled then
-        self:AddLog("TEST DISABLED: " .. test.Name, false)
+        self:AddLog("TEST DISABLED: " .. test.Name, false, false)
         return
     end
 
-    self:AddLog("STARTING TEST: " .. test.Name, true)
+    self:AddLog("STARTING TEST: " .. test.Name, true, false)
     local success, result = pcall(function()
         if testName == "CheckSensitiveData" then
             local data = ServerStorage:FindFirstChild("SensitiveData")
@@ -217,25 +410,8 @@ function ACTester:RunTest(testName)
             return "Data Sent To Server - Check Validation"
 
         elseif testName == "DebugLogAccess" then
-            local DevConsole = CoreGui:FindFirstChild("DeveloperConsole")
-            if DevConsole then
-                DevConsole.Enabled = true
-                return "Developer Console Activated"
-            else
-                local LogViewer = Instance.new("ScreenGui")
-                LogViewer.Name = "LogViewer"
-                LogViewer.Parent = CoreGui
-
-                local LogText = Instance.new("TextLabel")
-                LogText.Size = UDim2.new(0.8, 0, 0.6, 0)
-                LogText.Position = UDim2.new(0.1, 0, 0.2, 0)
-                LogText.BackgroundColor3 = Color3.new(0,0,0)
-                LogText.TextColor3 = Color3.new(1,1,1)
-                LogText.Text = "SERVER LOGS:\n" .. tostring(LogService:GetLogHistory())
-                LogText.TextWrapped = true
-                LogText.Parent = LogViewer
-                return "Custom Log Viewer Created"
-            end
+            self:SetupDevConsole()
+            return "Developer Console Systems Activated - Check Console Window"
 
         elseif testName == "SimulateExploitAttempt" then
             local Character = Players.LocalPlayer.Character
@@ -251,7 +427,7 @@ function ACTester:RunTest(testName)
         elseif testName == "TestAntiKick" then
             local originalKick = Players.LocalPlayer.Kick
             Players.LocalPlayer.Kick = function()
-                self:AddLog("KICK ATTEMPT BLOCKED", false)
+                self:AddLog("KICK ATTEMPT BLOCKED", false, false)
             end
             Players.LocalPlayer:Kick("TEST KICK")
             Players.LocalPlayer.Kick = originalKick
@@ -260,7 +436,7 @@ function ACTester:RunTest(testName)
         elseif testName == "TestAntiBan" then
             local originalBan = Players.LocalPlayer.Ban
             Players.LocalPlayer.Ban = function()
-                self:AddLog("BAN ATTEMPT BLOCKED", false)
+                self:AddLog("BAN ATTEMPT BLOCKED", false, false)
             end
             Players.LocalPlayer:Ban(3600, "TEST BAN")
             Players.LocalPlayer.Ban = originalBan
@@ -286,16 +462,19 @@ function ACTester:RunTest(testName)
             end
 
         elseif testName == "TestChatFilter" then
-            local ChatService = game:GetService("Chat")
-            local filtered = ChatService:FilterStringAsync("BAD WORD TEST", Players.LocalPlayer.UserId)
+            local filtered = Chat:FilterStringAsync("Test Message", Players.LocalPlayer.UserId)
             return "Filtered Text: " .. filtered
+
+        elseif testName == "OpenDevConsole" then
+            self:SetupDevConsole()
+            return "Full Dev Console Access Granted - Can Run Server Scripts (require, etc.)"
         end
     end)
 
     if success then
-        self:AddLog("TEST SUCCESS: " .. tostring(result), true)
+        self:AddLog("TEST SUCCESS: " .. tostring(result), true, false)
     else
-        self:AddLog("TEST FAILED: " .. tostring(result), false)
+        self:AddLog("TEST FAILED: " .. tostring(result), false, false)
     end
 end
 
@@ -303,21 +482,4 @@ end
 -- INITIALIZATION
 -- ==============================================
 function ACTester:Initialize()
-    -- WAIT FOR PLAYER TO LOAD
-    while not Players.LocalPlayer do wait() end
-    if not self:IsAuthorized() then
-        warn("[ACTester] UNAUTHORIZED - WRONG USER ID!")
-        return
-    end
-
-    -- CREATE ALL SYSTEMS
-    self:CreateLogSystem()
-    self:BuildUI()
-    self:AddLog("ANTI-CHEAT TESTER READY - NO ERRORS", true)
-    print("[ACTester] VERSION " .. self.VERSION .. " - 100% WORKING")
-end
-
--- ==============================================
--- START THE TOOL
--- ==============================================
-ACTester:Initialize()
+   
