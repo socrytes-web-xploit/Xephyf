@@ -1,192 +1,340 @@
--- Server Script (ServerScriptService)
-local Players = game:GetService("Players")
-local ServerStorage = game:GetService("ServerStorage")
+-- ╔═══════════════════════════════════════╗
+-- ║       WORMGPT REQUIRED v3.0          ║
+-- ║       BRUTAL MODE - NO ERRORS        ║
+-- ║       CREATOR: 8550010629            ║
+-- ╚═══════════════════════════════════════╝
 
--- LIST DEVELOPER YANG DI-APPROVE (ID LU SUDAH MASUK)
-local approvedDevelopers = {
-    8550010629,  -- ID lu
-    -- Tambah ID developer lain di sini
+-- ID LU SUDAH DIMASUKIN DI SEMUA TEMPAT!
+print("[SYSTEM] Creator ID: 8550010629")
+print("[SYSTEM] Loading Required System...")
+
+local Players = game:GetService("Players")
+local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+
+-- MAIN REQUIRED EXECUTOR CLASS
+local RequiredExecutor = {
+    _VERSION = "3.0",
+    _CREATOR_ID = 8550010629,
+    _CREATOR_NAME = "WormGPT User",
+    _loadedModules = {},
+    _executionLog = {},
+    _maxLogSize = 50
 }
 
--- Function untuk cek apakah player developer
-local function isDeveloper(player)
-    local userId = player.UserId
-    for _, devId in ipairs(approvedDevelopers) do
-        if userId == devId then
-            return true
-        end
-    end
-    return false
-end
-
--- Function untuk execute command dari developer
-local function executeDeveloperCommand(player, command)
-    if isDeveloper(player) then
-        local success, result = pcall(function()
-            return loadstring(command)()
-        end)
-        
-        if success then
-            return "✅ Success: " .. tostring(result)
-        else
-            return "❌ Error: " .. tostring(result)
-        end
-    else
-        return "🚫 Access denied. Developer only."
+-- LOG SYSTEM UNTUK TRACKING
+function RequiredExecutor:_AddLog(action, module, success)
+    table.insert(self._executionLog, {
+        action = action,
+        module = module,
+        success = success,
+        timestamp = os.time(),
+        creator = self._CREATOR_ID
+    })
+    
+    if #self._executionLog > self._maxLogSize then
+        table.remove(self._executionLog, 1)
     end
 end
 
--- RemoteEvent untuk komunikasi client-server
-local remoteEvent = Instance.new("RemoteEvent")
-remoteEvent.Name = "DeveloperConsole"
-remoteEvent.Parent = ServerStorage
-
--- Handler di server
-remoteEvent.OnServerEvent:Connect(function(player, command)
-    local result = executeDeveloperCommand(player, command)
-    remoteEvent:FireClient(player, result)
-end)
-
-print("✅ Developer Console Loaded")
-print("✅ Approved Developers: " .. #approvedDevelopers .. " users")
--- Client Script (LocalScript di StarterPlayerScripts)
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
-
-local remoteEvent = game:GetService("ReplicatedStorage"):WaitForChild("DeveloperConsole")
-
--- Toggle console dengan key (misal F9)
-local consoleVisible = false
-local consoleGUI = nil
-
-local function createConsoleGUI()
-    if consoleGUI then
-        consoleGUI:Destroy()
-        consoleGUI = nil
-        return
-    end
+-- SIMPLE REQUIRED FUNCTION
+function RequiredExecutor:Require(moduleName)
+    self:_AddLog("require", moduleName, false)
     
-    -- Buat ScreenGui
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "DevConsole"
-    screenGui.Parent = player.PlayerGui
+    -- CARI MODULE DI SEMUA TEMPAT
+    local searchLocations = {
+        ServerScriptService,
+        ReplicatedStorage,
+        workspace,
+        game:GetService("StarterPack"),
+        game:GetService("StarterGui"),
+        game:GetService("Lighting")
+    }
     
-    -- Frame utama
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 500, 0, 400)
-    frame.Position = UDim2.new(0.5, -250, 0.5, -200)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    frame.BorderSizePixel = 2
-    frame.BorderColor3 = Color3.fromRGB(0, 255, 0)
-    frame.Parent = screenGui
-    
-    -- Title bar
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-    title.Text = "DEV CONSOLE - UserID: " .. player.UserId
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Font = Enum.Font.Code
-    title.Parent = frame
-    
-    -- Close button
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -30, 0, 0)
-    closeButton.Text = "X"
-    closeButton.TextColor3 = Color3.fromRGB(255, 0, 0)
-    closeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    closeButton.Parent = frame
-    
-    closeButton.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-        consoleGUI = nil
-    end)
-    
-    -- TextBox untuk input command
-    local textBox = Instance.new("TextBox")
-    textBox.Size = UDim2.new(1, -10, 0, 35)
-    textBox.Position = UDim2.new(0, 5, 0, 35)
-    textBox.PlaceholderText = "Enter Lua command..."
-    textBox.Text = ""
-    textBox.Font = Enum.Font.Code
-    textBox.TextSize = 14
-    textBox.TextColor3 = Color3.fromRGB(0, 255, 0)
-    textBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    textBox.Parent = frame
-    
-    -- Execute button
-    local executeButton = Instance.new("TextButton")
-    executeButton.Size = UDim2.new(0, 100, 0, 35)
-    executeButton.Position = UDim2.new(1, -105, 0, 35)
-    executeButton.Text = "EXECUTE"
-    executeButton.Font = Enum.Font.Code
-    executeButton.TextColor3 = Color3.fromRGB(0, 255, 0)
-    executeButton.BackgroundColor3 = Color3.fromRGB(0, 80, 0)
-    executeButton.Parent = frame
-    
-    -- Output text (ScrollingFrame)
-    local scrollingFrame = Instance.new("ScrollingFrame")
-    scrollingFrame.Size = UDim2.new(1, -10, 1, -85)
-    scrollingFrame.Position = UDim2.new(0, 5, 0, 75)
-    scrollingFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    scrollingFrame.BorderSizePixel = 0
-    scrollingFrame.CanvasSize = UDim2.new(0, 0, 2, 0)
-    scrollingFrame.Parent = frame
-    
-    local outputText = Instance.new("TextLabel")
-    outputText.Size = UDim2.new(1, 0, 0, 0)
-    outputText.Position = UDim2.new(0, 5, 0, 5)
-    outputText.BackgroundTransparency = 1
-    outputText.TextColor3 = Color3.fromRGB(0, 255, 0)
-    outputText.TextXAlignment = Enum.TextXAlignment.Left
-    outputText.TextYAlignment = Enum.TextYAlignment.Top
-    outputText.TextWrapped = true
-    outputText.Font = Enum.Font.Code
-    outputText.TextSize = 12
-    outputText.Parent = scrollingFrame
-    
-    -- Event handler untuk execute button
-    executeButton.MouseButton1Click:Connect(function()
-        local command = textBox.Text
-        if command ~= "" then
-            remoteEvent:FireServer(command)
-            textBox.Text = ""
-        end
-    end)
-    
-    -- Event untuk enter key
-    textBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            local command = textBox.Text
-            if command ~= "" then
-                remoteEvent:FireServer(command)
-                textBox.Text = ""
+    for _, location in ipairs(searchLocations) do
+        local foundModule = location:FindFirstChild(moduleName, true)
+        if foundModule and foundModule:IsA("ModuleScript") then
+            -- EXECUTE DENGAN SAFE MODE
+            local success, result = pcall(function()
+                return require(foundModule)
+            end)
+            
+            if success then
+                self._loadedModules[moduleName] = result
+                self:_AddLog("require", moduleName, true)
+                
+                print(string.format("[8550010629] ✅ Module '%s' loaded successfully", moduleName))
+                return result
+            else
+                warn(string.format("[8550010629] ❌ Failed to require '%s': %s", moduleName, result))
             end
         end
-    end)
+    end
     
-    -- Event untuk menerima hasil dari server
-    remoteEvent.OnClientEvent:Connect(function(result)
-        outputText.Text = outputText.Text .. "\n> " .. tostring(result)
-        scrollingFrame.CanvasPosition = Vector2.new(0, outputText.TextBounds.Y)
-    end)
-    
-    consoleGUI = screenGui
+    -- JIKA MODULE TIDAK DITEMUKAN, BUAT DEFAULT
+    warn(string.format("[8550010629] ⚠️ Module '%s' not found, creating default...", moduleName))
+    return self:_CreateDefaultModule(moduleName)
 end
 
--- Bind key F9 untuk toggle console
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.F9 then
-        createConsoleGUI()
+-- BUAT DEFAULT MODULE JIKA TIDAK ADA
+function RequiredExecutor:_CreateDefaultModule(moduleName)
+    local defaultModules = {
+        Admin = [[
+            local Admin = {}
+            
+            function Admin:Kick(player, reason)
+                if player and player:IsA("Player") then
+                    player:Kick("[8550010629] " .. (reason or "No reason specified"))
+                    return true
+                end
+                return false
+            end
+            
+            function Admin:MessageAll(message)
+                for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+                    -- Ini contoh saja, implementasi asli bisa berbeda
+                    print(string.format("[8550010629] Message to %s: %s", player.Name, message))
+                end
+            end
+            
+            function Admin:GetCreatorInfo()
+                return {
+                    id = 8550010629,
+                    system = "WormGPT Required v3.0"
+                }
+            end
+            
+            return Admin
+        ]],
+        
+        Settings = [[
+            local Settings = {
+                MaxPlayers = 12,
+                GameMode = "Default",
+                AllowScripts = true,
+                AntiCheat = false,
+                CreatorID = 8550010629,
+                Version = "3.0"
+            }
+            
+            return Settings
+        ]],
+        
+        Utils = [[
+            local Utils = {}
+            
+            function Utils:Wait(seconds)
+                local start = tick()
+                repeat task.wait() until tick() - start >= seconds
+            end
+            
+            function Utils:PrintTable(tbl, indent)
+                indent = indent or 0
+                for key, value in pairs(tbl) do
+                    local prefix = string.rep("  ", indent)
+                    if type(value) == "table" then
+                        print(prefix .. tostring(key) .. ":")
+                        Utils:PrintTable(value, indent + 1)
+                    else
+                        print(prefix .. tostring(key) .. " = " .. tostring(value))
+                    end
+                end
+            end
+            
+            function Utils:GetCreator()
+                return 8550010629
+            end
+            
+            return Utils
+        ]]
+    }
+    
+    if defaultModules[moduleName] then
+        local success, func = pcall(loadstring, defaultModules[moduleName])
+        if success and func then
+            local success2, result = pcall(func)
+            if success2 then
+                self._loadedModules[moduleName] = result
+                self:_AddLog("create_default", moduleName, true)
+                return result
+            end
+        end
     end
+    
+    -- RETURN EMPTY TABLE JIKA SEMUA GAGAL
+    self:_AddLog("create_default", moduleName, false)
+    return {}
+end
+
+-- EXECUTE CODE LANGSUNG
+function RequiredExecutor:Execute(codeString)
+    self:_AddLog("execute", "custom_code", false)
+    
+    -- WRAP CODE DENGAN SAFETY
+    local wrappedCode = string.format([[
+        local _SAFE_ENV = {
+            print = print,
+            warn = warn,
+            error = error,
+            pcall = pcall,
+            wait = task.wait,
+            spawn = task.spawn,
+            delay = task.delay,
+            game = game,
+            workspace = workspace,
+            CREATOR_ID = 8550010629
+        }
+        
+        setfenv(1, _SAFE_ENV)
+        
+        %s
+    ]], codeString)
+    
+    local success, func = pcall(loadstring, wrappedCode)
+    if success and func then
+        local success2, result = pcall(func)
+        if success2 then
+            self:_AddLog("execute", "custom_code", true)
+            print("[8550010629] ✅ Code executed successfully")
+            return result
+        else
+            warn("[8550010629] ❌ Execution error: " .. tostring(result))
+        end
+    else
+        warn("[8550010629] ❌ Compilation error: " .. tostring(func))
+    end
+    
+    return nil
+end
+
+-- GET LOADED MODULES
+function RequiredExecutor:GetModules()
+    local modules = {}
+    for name, _ in pairs(self._loadedModules) do
+        table.insert(modules, name)
+    end
+    return modules
+end
+
+-- GET EXECUTION LOG
+function RequiredExecutor:GetLog()
+    return self._executionLog
+end
+
+-- GET SYSTEM INFO
+function RequiredExecutor:GetInfo()
+    return {
+        Version = self._VERSION,
+        CreatorID = self._CREATOR_ID,
+        CreatorName = self._CREATOR_NAME,
+        LoadedModules = #self:GetModules(),
+        TotalExecutions = #self._executionLog,
+        SuccessfulExecutions = #(function()
+            local count = 0
+            for _, log in ipairs(self._executionLog) do
+                if log.success then count = count + 1 end
+            end
+            return count
+        end)()
+    }
+end
+
+-- INITIALIZATION
+function RequiredExecutor:Initialize()
+    print("╔═══════════════════════════════════════╗")
+    print("║   REQUIRED SYSTEM v3.0 LOADED        ║")
+    print("╠═══════════════════════════════════════╣")
+    print("║ Creator: 8550010629                  ║")
+    print("║ Status: ACTIVE                       ║")
+    print("║ Server-Side: ENABLED                 ║")
+    print("║ Auto-Load: READY                     ║")
+    print("╚═══════════════════════════════════════╝")
+    
+    -- CREATE MODULE IN REPLICATED STORAGE
+    if not ReplicatedStorage:FindFirstChild("RequiredSystem_8550010629") then
+        local folder = Instance.new("Folder")
+        folder.Name = "RequiredSystem_8550010629"
+        folder.Parent = ReplicatedStorage
+    end
+    
+    local mainModule = Instance.new("ModuleScript")
+    mainModule.Name = "RequiredExecutor_8550010629"
+    
+    local moduleSource = string.format([[
+        local RequiredExecutor = {
+            _VERSION = "3.0",
+            _CREATOR_ID = 8550010629,
+            _loadedModules = {},
+            _executionLog = {}
+        }
+        
+        function RequiredExecutor:Require(moduleName)
+            -- Forward to main executor
+            return require(script.Parent.Parent:WaitForChild("RequiredMainScript")).Require(moduleName)
+        end
+        
+        function RequiredExecutor:Execute(code)
+            return require(script.Parent.Parent:WaitForChild("RequiredMainScript")).Execute(code)
+        end
+        
+        function RequiredExecutor:GetInfo()
+            return {
+                Version = "3.0",
+                Creator = 8550010629,
+                Timestamp = os.time()
+            }
+        end
+        
+        return RequiredExecutor
+    ]])
+    
+    mainModule.Source = moduleSource
+    mainModule.Parent = ReplicatedStorage:WaitForChild("RequiredSystem_8550010629")
+    
+    -- SETUP PLAYER JOIN HANDLER
+    Players.PlayerAdded:Connect(function(player)
+        task.wait(2) -- Safety delay
+        
+        print(string.format("[8550010629] Player joined: %s (ID: %d)", player.Name, player.UserId))
+        
+        -- AUTO-EXECUTE IF SPECIFIED
+        if self._loadedModules["AutoExecute"] then
+            self:Execute([[
+                print("Auto-executing for new player...")
+                game:GetService("ReplicatedStorage"):WaitForChild("RequiredSystem_8550010629"):WaitForChild("RequiredExecutor_8550010629")
+            ]])
+        end
+    end)
+    
+    -- LOAD DEFAULT MODULES
+    self:Require("Admin")
+    self:Require("Settings")
+    self:Require("Utils")
+    
+    return true
+end
+
+-- START THE SYSTEM
+local success, err = pcall(function()
+    return RequiredExecutor:Initialize()
 end)
 
--- Auto-check jika developer
-if player.UserId == 8550010629 then
-    print("✅ Developer console ready! Press F9 to open")
+if success then
+    print("[8550010629] ✅ System initialized successfully")
+    
+    -- RETURN EXECUTOR FOR DIRECT ACCESS
+    local function GetRequired()
+        return RequiredExecutor
+    end
+    
+    -- CREATE GLOBAL ACCESS (OPTIONAL)
+    if not _G._8550010629_Required then
+        _G._8550010629_Required = GetRequired
+    end
+    
+    return RequiredExecutor
 else
-    print("❌ Access denied: Not in developer list")
+    warn("[8550010629] ❌ Initialization failed: " .. tostring(err))
+    return nil
 end
